@@ -2,6 +2,7 @@ from ucimlrepo import fetch_ucirepo
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import os
+import numpy as np
 
 
 class DataPipeline:
@@ -46,25 +47,59 @@ class DataPipeline:
         X_train = train_df.drop(columns=["diagnosis"])
         y_train = train_df["diagnosis"]
 
-        print("\nTrain features shape:", X_train.shape)
+        print("Train features shape:", X_train.shape)
         print("Train targets shape:", y_train.shape)
-        print("First 5 train targets:\n", X_train.head())
+        print("First 5 train data :\n", X_train.head())
         # print("First 5 train targets:\n", y_train.head())
 
-        print("Missing values in train features:", X_train.isnull().sum().sum())
-        print("Missing values in train targets:", y_train.isnull().sum().sum())
+        print("Null count in train features:", X_train.isnull().sum().sum())
+        print("Null count in train targets:", y_train.isnull().sum().sum())
         # Sınıf dağılımı ve oranları
         print("\nTrain class distribution:")
         print(y_train.value_counts())
-        print("Class ratios:")
-        print(y_train.value_counts(normalize=True))
 
-        # Özelliklerin istatistiksel özetini yazdır
-        print("\nTrain feature statistics:")
         print(X_train.describe())
+
+    def corr_with_target(self):
+        train_df = pd.read_csv(self.train_path)
+        X_train = train_df.drop(columns=["diagnosis"])
+        y_train = train_df["diagnosis"]
+
+        features = []
+        for base_name in [
+            "radius",
+            "texture",
+            "perimeter",
+            "area",
+            "smoothness",
+            "compactness",
+            "concavity",
+            "concave_points",
+            "symmetry",
+            "fractal_dimension",
+        ]:
+            corr_target = X_train.corrwith(y_train).abs()
+            candidates = [f"{base_name}1", f"{base_name}2", f"{base_name}3"]
+            # idxmax selects the largest value
+            selected_feature = corr_target[candidates].idxmax()
+            features.append(selected_feature)
+
+        print("Selected features:", features)
+
+    def corr_with_selected_features(self):
+        train_df = pd.read_csv(self.train_path)
+        X_train = train_df[["radius3", "perimeter3", "area3"]]
+        # X_train = train_df[[ "concavity1", "concave_points3", "compactness1"]]
+        y_train = train_df["diagnosis"]
+
+        corr_target = X_train.corrwith(y_train).abs()
+        selected_feature = corr_target.idxmax()
+        print("Selected feature:", selected_feature)
 
 
 if __name__ == "__main__":
     pipeline = DataPipeline()
-    pipeline.download_and_split()
-    pipeline.analyze()
+    # pipeline.download_and_split()
+    # pipeline.analyze()
+    # pipeline.corr_with_target()
+    pipeline.corr_with_selected_features()
