@@ -1,7 +1,11 @@
 # Multilayer Perceptron
 
 ## Introduce
-This project aims to implement a multilayer perceptron to predict whether a cancer diagnosis is malignant or benign, using a dataset of breast cancer cases from Wisconsin.
+This project aims to implement a multilayer perceptron (MLP) from scratch to predict whether a cancer diagnosis is malignant or benign, using the Wisconsin Diagnostic Breast Cancer dataset.
+
+For mathematical fundamentals and step-by-step digital examples, please visit [Math.md](Math.md).
+
+---
 
 ## Dataset
 
@@ -16,4 +20,3 @@ This dataset contains 569 samples for breast cancer diagnosis.
 - There are no missing values in the dataset.
 - Class distribution: 357 benign, 212 malignant samples.
 - The dataset is split as 80% for training and 20% for validation.
-
