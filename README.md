@@ -1,18 +1,19 @@
 # Multilayer Perceptron
 
 ## Introduction
-This project builds a Multilayer Perceptron (MLP) from scratch to classify breast tumors as malignant or benign using the Wisconsin Diagnostic Breast Cancer (WDBC) dataset.
 
-For mathematical foundations and worked numerical examples, see [Math.md](Math.md).
+This project builds a Multilayer Perceptron (MLP) from scratch with NumPy to classify breast tumors (benign / malignant) using the Wisconsin Diagnostic Breast Cancer (WDBC) dataset.
+
+For mathematical foundations and worked examples, see [Math.md](Math.md).
 
 ---
 
 ## Dataset
 
-**Dataset: Wisconsin Diagnostic Breast Cancer [(WDBC)](https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic)**
+**Wisconsin Diagnostic Breast Cancer (WDBC)**
 
 - 569 samples
-- 30 numeric input features + 1 target (diagnosis)
+- 30 numeric features + 1 target (`diagnosis`)
 - No missing values
 - Class distribution: 357 benign, 212 malignant
 - Split: 80% train / 20% validation (stratified)
@@ -127,9 +128,48 @@ Final subset used after analysis:
 - `symmetry3`
 - `fractal_dimension3`
 
-Rationale (short):
-- Good target relationship
-- Lower inter-feature redundancy compared with many alternatives
-- Compact and effective subset for MLP input
+---
+
+## Run Training
+
+Default run:
+
+```bash
+python model/train.py
+```
+
+Example custom run:
+
+```bash
+python model/train.py --layer 16 16 16 --epochs 300 --batch_size 32 --learning_rate 0.01 --patience 30 --min_delta 1e-4
+```
+
+CLI arguments:
+
+- `--layer` hidden layer sizes
+- `--epochs` max epoch count
+- `--batch_size` mini-batch size
+- `--learning_rate` learning rate
+- `--patience` early stopping patience
+- `--min_delta` minimum improvement for valid loss
 
 ---
+
+## Outputs
+
+- Training curves (loss + accuracy) in matplotlib window
+- Best model parameters in `saved_model.npz`
+
+---
+
+## Documentation Files
+
+- [model/initialization-selection.md](model/initialization-selection.md)
+- [model/forward-propagation-selection.md](model/forward-propagation-selection.md)
+- [model/softmax-selection.md](model/softmax-selection.md)
+- [model/relu-selection.md](model/relu-selection.md)
+- [model/backpropagation-selection.md](model/backpropagation-selection.md)
+
+---
+
+![Selected feature correlation matrix](plots/images/loss&acc.png)

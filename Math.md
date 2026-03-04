@@ -574,3 +574,135 @@ Keeping these arithmetic checks in mind prevents shape mismatches and helps debu
 
 
 ---
+
+## 8. Project-Specific Math Addendum (`model/train.py`)
+
+Bu bölüm, mevcut kodda aktif kullanılan matematikleri toplar. Sigmoid bölümleri korunmuş, bu kısım sadece **ek** olarak yazılmıştır.
+
+### 8.1 ReLU and ReLU Derivative
+
+Hidden layers use ReLU:
+
+$$
+	ext{ReLU}(z)=\max(0,z)
+$$
+
+Derivative used in backprop:
+
+$$
+	ext{ReLU}'(z)=
+\begin{cases}
+1, & z>0 \\
+0, & z\le 0
+\end{cases}
+$$
+
+Mini example:
+
+```text
+z      = [-2.0, -0.3, 0.0, 1.2, 3.1]
+ReLU   = [ 0.0,  0.0, 0.0, 1.2, 3.1]
+ReLU'  = [ 0,    0,   0,   1,   1  ]
+```
+
+### 8.2 Stable Softmax Used in Code
+
+Softmax per sample:
+
+$$
+\hat{y}_i = \frac{e^{z_i}}{\sum_j e^{z_j}}
+$$
+
+Numerically stable version (used in code):
+
+$$
+\hat{y}_i = \frac{e^{z_i - z_{max}}}{\sum_j e^{z_j - z_{max}}}
+$$
+
+Mini example:
+
+```text
+z = [5.0, 2.0, -1.0]
+z_max = 5.0
+z_shift = [0.0, -3.0, -6.0]
+exp(z_shift) ≈ [1.0000, 0.0498, 0.0025]
+sum ≈ 1.0523
+softmax ≈ [0.9503, 0.0473, 0.0024]
+```
+
+### 8.3 Categorical Cross-Entropy (Batch Mean)
+
+The training loss in `compute_loss()`:
+
+$$
+L = -\frac{1}{m}\sum_{k=1}^{m}\sum_{c=1}^{C} y_{k,c}\log(\hat{y}_{k,c})
+$$
+
+with clipping:
+
+$$
+\hat{y}_{k,c} \leftarrow \text{clip}(\hat{y}_{k,c}, \epsilon, 1-\epsilon)
+$$
+
+to avoid $\log(0)$.
+
+### 8.4 Softmax + Cross-Entropy Gradient Simplification
+
+For output layer logits:
+
+$$
+\delta^L = \hat{Y} - Y
+$$
+
+This is exactly implemented as:
+
+```python
+eh[-1] = activations[-1] - y
+```
+
+### 8.5 Hidden-Layer Error Propagation in This Project
+
+For hidden layer $l$:
+
+$$
+\delta^l = (\delta^{l+1}(W^{l+1})^T)\odot \text{ReLU}'(Z^l)
+$$
+
+matching code:
+
+```python
+eh[i] = (eh[i + 1] @ W[i + 1].T) * derivative_relu(z_scores[i])
+```
+
+### 8.6 Mini-Batch Gradients and Update Rule
+
+For each layer:
+
+$$
+\nabla W^l = \frac{(A^{l-1})^T\delta^l}{m_b},
+\qquad
+\nabla b^l = \frac{\sum\delta^l}{m_b}
+$$
+
+Update:
+
+$$
+W^l \leftarrow W^l - \eta\nabla W^l,
+\qquad
+b^l \leftarrow b^l - \eta\nabla b^l
+$$
+
+where $m_b$ is batch size and $\eta$ is learning rate.
+
+### 8.7 He Uniform Initialization (Used)
+
+For each layer with `fan_in`:
+
+$$
+W \sim U\left(-\sqrt{\frac{6}{fan_{in}}}, +\sqrt{\frac{6}{fan_{in}}}\right),
+\qquad b=0
+$$
+
+This matches ReLU-based hidden layers and stabilizes initial signal flow.
+
+
