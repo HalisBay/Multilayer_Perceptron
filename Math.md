@@ -1,8 +1,119 @@
-# Multilayer Perceptron – Mathematical Foundations
+# Multilayer Perceptron (MLP) – Adım Adım Matematiksel Gösterim
 
-## 1. Forward Propagation
+Bu doküman, MLP matematiğini He initialization’dan başlayıp ileri yayılım, loss, geri yayılım, gradyan ve güncelleme adımlarına kadar **tek bir zincir** halinde anlatır.
 
-A fully connected (dense) layer computes two operations.
+Amaç: Kod ezberi değil; matrislerin nereden geldiğini, nasıl çarpıldığını ve neden o şekilde güncellendiğini net göstermek.
+
+---
+
+## 0) Senaryo ve Mimari
+
+Bu dokümanda hesap kolaylığı için küçük bir ağ kullanıyoruz:
+
+- Input feature sayısı: 3
+- Hidden layer: 2 nöron (ReLU)
+- Output layer: 2 sınıf (Softmax)
+- Mini-batch size: 2
+
+Yani:
+
+```text
+layer_size = [3, 2, 2]
+```
+
+---
+
+## 1) He Uniform Initialization
+
+Amaç: Ağırlıkları öyle bir aralıkta başlatmak ki, ileri ve geri yayılımda (forward/backprop) değerler çok büyüyüp patlamasın veya çok küçülüp kaybolmasın.
+Formül:
+
+$$
+W^l \sim U\left(-\sqrt{\frac{6}{\mathrm{fan\_in}}}, +\sqrt{\frac{6}{\mathrm{fan\_in}}}\right),
+\qquad
+b^l = 0
+$$
+
+Burada `fan_in`, ilgili katmana giren nöron sayısıdır.
+
+### Bu ağ için limitler
+
+$$
+\mathrm{limit}_1 = \sqrt{\frac{6}{3}} = \sqrt{2} \approx 1.4142,
+\qquad
+\mathrm{limit}_2 = \sqrt{\frac{6}{2}} = \sqrt{3} \approx 1.7320
+$$
+
+Örnek başlangıç değerleri:
+
+$$
+W^1 =
+\begin{bmatrix}
+0.60 & -0.20 \\
+-0.10 & 0.50 \\
+1.20 & -0.70
+\end{bmatrix},
+\quad
+b^1 = \begin{bmatrix}0 & 0\end{bmatrix}
+$$
+
+$$
+W^2 =
+\begin{bmatrix}
+0.40 & -0.30 \\
+0.20 & 0.10
+\end{bmatrix},
+\quad
+b^2 = \begin{bmatrix}0 & 0\end{bmatrix}
+$$
+
+---
+
+## 2) Mini-Batch ve Etiketler
+
+
+Makine öğrenmesi ve derin öğrenmede mini-batch, eğitim verilerinin küçük gruplara bölünerek işlenmesi yöntemidir.
+- Dataset: Tüm örneklerin bulunduğu büyük veri kümesi (örneğin WDBC’de 569 örnek × 30 feature).
+- Batch size: Eğitim sırasında aynı anda işlenecek örnek sayısı (örneğin 16, 32, 64).
+- Mini-batch: Dataset’ten seçilen bu küçük grup.
+
+Mantığı
+- Tüm veriyi tek seferde işlemek (batch gradient descent) hem yavaş hem de bellek açısından zor olabilir.
+- Tek örnekle (stochastic gradient descent) çalışmak ise çok gürültülü ve dengesizdir.
+- Mini-batch gradient descent bu ikisinin ortasını bulur:
+- Her adımda küçük bir grup örnek alınır.
+- Bu grup üzerinden forward pass (çıktı hesaplama) ve backward pass (gradyan hesaplama) yapılır.
+- Parametreler güncellenir, sonra sıradaki mini-batch’e geçilir.
+
+WDBC Örneği
+- Feature matrisi (X): `16 × 30` boyutunda (16 örnek, her biri 30 feature).
+- Etiket matrisi (Y): `16 × 2` boyutunda (diagnosis sütunu one-hot encode edilmiş: `[1,0] = Malignant`, `[0,1] = Benign`).
+
+Örnek:
+
+$$
+X_{batch} = \begin{bmatrix}
+x_{1,1} & x_{1,2} & \dots & x_{1,30} \\
+x_{2,1} & x_{2,2} & \dots & x_{2,30} \\
+\vdots & \vdots & \ddots & \vdots \\
+x_{16,1} & x_{16,2} & \dots & x_{16,30}
+\end{bmatrix} \in \mathbb{R}^{16\times 30}
+$$
+
+One-hot etiketler:
+
+$$
+Y_{batch} = \begin{bmatrix}
+1 & 0 \\
+0 & 1 \\
+\vdots & \vdots \\
+1 & 0
+\end{bmatrix} \in \{0,1\}^{16\times 2}
+$$
+
+---
+
+## 3) Forward Propagation
 
 ### Step 1 — Weighted Sum
 
@@ -12,23 +123,23 @@ $$
 
 Where:
 
-- $X \in \mathbb{R}^{(\text{batch\_size},\,\text{input\_size})}$
-- $W \in \mathbb{R}^{(\text{input\_size},\,\text{output\_size})}$
-- $b \in \mathbb{R}^{(1,\,\text{output\_size})}$
+- $X \in \mathbb{R}^{(\mathrm{batch\_size},\,\mathrm{input\_size})}$
+- $W \in \mathbb{R}^{(\mathrm{input\_size},\,\mathrm{output\_size})}$
+- $b \in \mathbb{R}^{(1,\,\mathrm{output\_size})}$
 
 Result:
 
 $$
-Z \in \mathbb{R}^{(\text{batch\_size},\,\text{output\_size})}
+Z \in \mathbb{R}^{(\mathrm{batch\_size},\,\mathrm{output\_size})}
 $$
 
-### Example
+### Example (shape)
 
 If:
 
 - Batch size = 8
 - Input size = 4
-- Hidden layer neurons = 5
+- Hidden neurons = 5
 
 Then:
 
@@ -36,673 +147,684 @@ Then:
 X  = (8,4)
 W1 = (4,5)
 b1 = (1,5)
-```
-
-Forward pass:
-
-```text
-Z1 = X @ W1 + b1     → (8,5)
+Z1 = X @ W1 + b1 -> (8,5)
 ```
 
 ---
 
-### Worked small example — explicit dot products (batch size 2, hidden 2)
+### Worked small example — explicit dot products (bizim zincir)
 
-1. Matrices (numeric):
-
-```text
-  X  = [[1, 2, 3],
-      [4, 5, 6]]            # shape (2,3)
-
-  W1 = [[0.1, 0.2],
-        [0.3, 0.4],
-        [0.5, 0.6]]          # shape (3,2)
-
-b1 = [[0.01, 0.02]]         # shape (1,2)
-```
-
-2. Dot-product step — row 1 (first sample):
-
-- Hidden neuron 1 (first column):
-
-    1 * 0.1 + 2 * 0.3 + 3 * 0.5 = 0.1 + 0.6 + 1.5 = 2.2
-
-- Hidden neuron 2 (second column):
-
-    1 * 0.2 + 2 * 0.4 + 3 * 0.6 = 0.2 + 0.8 + 1.8 = 2.8
-
-Add bias: [2.2, 2.8] + [0.01, 0.02] = [2.21, 2.82]
-
-3. Dot-product step — row 2 (second sample):
-
-- Hidden neuron 1:
-
-    4 * 0.1 + 5 * 0.3 + 6 * 0.5 = 0.4 + 1.5 + 3.0 = 4.9
-
-- Hidden neuron 2:
-
-    4 * 0.2 + 5 * 0.4 + 6 * 0.6 = 0.8 + 2.0 + 3.6 = 6.4
-
-Add bias: [4.9, 6.4] + [0.01, 0.02] = [4.91, 6.42]
-
-4. Final pre-activation matrix Z:
+Burada:
 
 ```text
-  Z = [[2.21, 2.82],
-          [4.91, 6.42]]    # shape (2,2)
+X  = [[ 0.50,  1.20, -0.30],
+      [ 1.00, -0.40,  0.80]]        # (2,3)
+
+W1 = [[ 0.60, -0.20],
+      [-0.10,  0.50],
+      [ 1.20, -0.70]]               # (3,2)
+
+b1 = [[0.00, 0.00]]                  # (1,2)
 ```
 
-Apply activation element-wise (e.g., sigmoid) to get A of shape (2,2).
+#### Dot-product: 1. satır (1. örnek)
 
-This explicit walkthrough helps verify dimension consistency and implementation correctness when coding the forward pass.
-
-### Step 2 — Activation Function
+- Hidden nöron 1 (1. sütun):
 
 $$
-A = f(Z)
+0.50\cdot0.60 + 1.20\cdot(-0.10) + (-0.30)\cdot1.20 = -0.18
 $$
 
-Example with sigmoid activation:
+- Hidden nöron 2 (2. sütun):
 
 $$
-\sigma(z) = \frac{1}{1 + e^{-z}}
+0.50\cdot(-0.20) + 1.20\cdot0.50 + (-0.30)\cdot(-0.70) = 0.71
 $$
 
-Output:
+Bias eklenince: $[-0.18,\,0.71] + [0,0] = [-0.18,\,0.71]$
 
-```text
-A1 = sigmoid(Z1) → (8,5)
-```
-Numeric sigmoid example (apply to the worked example Z):
+#### Dot-product: 2. satır (2. örnek)
 
-```text
-Z = [[2.21, 2.82],
-    [4.91, 6.42]]
+- Hidden nöron 1:
 
-sigmoid(2.21) ≈ 0.90
-sigmoid(2.82) ≈ 0.94
-sigmoid(4.91) ≈ 0.99
-sigmoid(6.42) ≈ 0.998
+$$
+1.00\cdot0.60 + (-0.40)\cdot(-0.10) + 0.80\cdot1.20 = 1.60
+$$
 
-A = [[0.900, 0.944],
-    [0.993, 0.998]]    # shape (2,2)
-```
+- Hidden nöron 2:
 
-Note on activation outputs and classification:
+$$
+1.00\cdot(-0.20) + (-0.40)\cdot0.50 + 0.80\cdot(-0.70) = -0.96
+$$
 
-- Sigmoid (and most activation functions) return continuous values, not discrete 0/1 labels. For binary classification with a single sigmoid output, convert to a class label by thresholding (e.g., `label = a >= 0.5`).
-- Alternatively, use a 2-unit output with `softmax` and take `argmax` to select the class.
-- When training, do not round activations before computing loss — use the continuous outputs with the appropriate loss (binary cross-entropy for sigmoid, categorical cross-entropy for softmax).
+Bias eklenince: $[1.60,\,-0.96] + [0,0] = [1.60,\,-0.96]$
+
+Final pre-activation:
+
+$$
+Z^1 =
+\begin{bmatrix}
+-0.18 & 0.71 \\
+1.60 & -0.96
+\end{bmatrix}
+$$
 
 ---
 
-## 2. Sigmoid Derivative
-
-The sigmoid derivative simplifies to:
+### Step 2 — Activation (ReLU)
+Amaç: ReLU (Rectified Linear Unit) negatif değerleri 0 yapıp pozitif değerleri aynı bırakarak doğrusal olmayanlık (nonlinearity) ekler; böylece ağ lineer olmayan karar sınırları öğrenebilir.
 
 $$
-\sigma'(z) = \sigma(z)(1 - \sigma(z))
+A^1 = \mathrm{ReLU}(Z^1) = \max(0, Z^1)
 $$
 
-In implementation (we use the already computed activation value $a = \sigma(z)$):
+$$
+A^1 =
+\begin{bmatrix}
+0.00 & 0.71 \\
+1.60 & 0.00
+\end{bmatrix}
+$$
 
-```python
-def sigmoid_derivative(a):
-    return a * (1 - a)
-```
+![](plots/images/1_noron.png)
+---
 
-Numeric example (use $A$ from the worked example):
+### Step 3 — Output Weighted Sum
 
-```text
-A = [[0.900, 0.944],
-     [0.993, 0.998]]    # shape (2,2)
 
-sigma'(0.900) = 0.900 * (1 - 0.900) = 0.0900
-sigma'(0.944) = 0.944 * (1 - 0.944) = 0.0529
-sigma'(0.993) = 0.993 * (1 - 0.993) = 0.00695
-sigma'(0.998) = 0.998 * (1 - 0.998) = 0.001996
+**Aktivasyon Sonrası Geçişin Mantığı:**
+İlk katmanda giriş verileri X ağırlıklarla $ W^1 $ çarpılıp bias $b^1$ eklenerek $Z^1$ elde edilir. Bu hâl hâlâ doğrusal bir dönüşümdür. Aktivasyon fonksiyonu (örneğin ReLU) uygulanarak $A^1$ üretilir; bu adım modele doğrusal olmayanlık katar ve verilerin daha karmaşık ilişkilerini öğrenmesini sağlar.
+Sonraki adımda $A^1$, bir sonraki katmanın girişidir. Bu yüzden $A^1$ tekrar yeni ağırlıklarla $W^2$ çarpılır ve bias $b^2$ eklenir. Böylece her katman kendi ağırlıklarını öğrenir ve veriyi farklı bir temsil düzeyine dönüştürür. Katmanlar arası bu zincir sayesinde ağ, basit özelliklerden başlayarak daha soyut ve güçlü karar sınırlarına ulaşır.
 
-sigmoid_deriv = [[0.0900, 0.0529],
-                 [0.00695, 0.001996]]
-```
 
-Using the derivative in backprop (concept): if the next-layer delta for the same shape is `delta_next`, the hidden-layer delta is computed element-wise as:
-
-```python
-# element-wise
-delta_hidden = delta_next * sigmoid_deriv
-```
-
-Example (toy numbers):
+$$
+Z^2 = A^1W^2 + b^2
+$$
 
 ```text
-delta_next = [[0.1, 0.2],
-              [0.05, 0.01]]
+A1 = [[0.00, 0.71],
+      [1.60, 0.00]]                 # (2,2)
 
-delta_hidden = [[0.1*0.0900, 0.2*0.0529],
-                [0.05*0.00695, 0.01*0.001996]]
+W2 = [[ 0.40, -0.30],
+      [ 0.20,  0.10]]               # (2,2)
 
-             = [[0.00900, 0.01058],
-                [0.0003475, 0.00001996]]
+b2 = [[0.00, 0.00]]                  # (1,2)
 ```
 
-This shows how the sigmoid derivative rescales the propagated error per unit.
+Hesap:
+
+- 1. örnek:
+  - $z_{11} = 0.00\cdot0.40 + 0.71\cdot0.20 = 0.142$
+  - $z_{12} = 0.00\cdot(-0.30) + 0.71\cdot0.10 = 0.071$
+- 2. örnek:
+  - $z_{21} = 1.60\cdot0.40 + 0.00\cdot0.20 = 0.640$
+  - $z_{22} = 1.60\cdot(-0.30) + 0.00\cdot0.10 = -0.480$
+
+$$
+Z^2 =
+\begin{bmatrix}
+0.142 & 0.071 \\
+0.640 & -0.480
+\end{bmatrix}
+$$
 
 ---
 
-## 3. Output Layer — Softmax + Cross-Entropy
-
-### Softmax
-
-$$
-p_i = \frac{e^{z_i}}{\sum_j e^{z_j}}
-$$
-
-Softmax transforms logits into a probability distribution over classes.
-
-### Cross-Entropy Loss
-
-$$
-L = -\sum_i y_i \log(p_i)
-$$
-
-### Important Property
-
-When softmax and cross-entropy are combined, the gradient of the loss with respect to the logits simplifies to:
-
-$$
-\frac{\partial L}{\partial Z} = A - Y
-$$
-
-This simplifies backpropagation for the output layer.
-
-
-Numeric example (continuation from section 1/2 worked example, batch size 2, 3-class output):
-
-We continue with the same hidden activations:
-
-```text
-A1 = [[0.900, 0.944],
-    [0.993, 0.998]]      # shape (2,2)
-```
-
-Choose output-layer parameters:
-
-```text
-W2 = [[ 0.20, -0.10,  0.05],
-    [ 0.30,  0.40, -0.20]]   # shape (2,3)
-
-b2 = [[0.01, -0.02, 0.03]]     # shape (1,3)
-```
-
-1) Logits from the same forward chain:
-
-```text
-Z2 = A1 @ W2 + b2
-   ≈ [[0.4732, 0.2676, -0.1138],
-    [0.5080, 0.2799, -0.1210]]   # shape (2,3)
-```
-
-2) Stable softmax (per row):
-
-```text
-z1_stable = [0.0000, -0.2056, -0.5870]
-exp(z1_stable) ≈ [1.0000, 0.8142, 0.5560]
-p1 ≈ [0.4219, 0.3435, 0.2346]
-
-z2_stable = [0.0000, -0.2281, -0.6290]
-exp(z2_stable) ≈ [1.0000, 0.7961, 0.5332]
-p2 ≈ [0.4293, 0.3418, 0.2289]
-
-P = [[0.4219, 0.3435, 0.2346],
-     [0.4293, 0.3418, 0.2289]]      # shape (2,3)
-```
-
-3) Labels and cross-entropy loss (same batch):
-
-```text
-Y = [[1, 0, 0],
-     [0, 1, 0]]
-
-L1 = -log(0.4219) ≈ 0.8630
-L2 = -log(0.3418) ≈ 1.0735
-L_batch_mean = (L1 + L2) / 2 ≈ 0.9683
-```
-
-4) Output gradient (softmax + cross-entropy simplification):
-
-```text
-delta2 = dZ2 = P - Y
-    ≈ [[-0.5781,  0.3435, 0.2346],
-       [ 0.4293, -0.6582, 0.2289]]   # shape (2,3)
-```
-
-Interpretation:
-
-- These values are a direct continuation of the earlier `A1` matrix from the worked forward pass.
-- The `delta2` computed here is reused directly in the next backprop and gradient sections.
-
----
-
-## 4. Backpropagation
-
-### Output Layer
-
-$$
-\delta^{L} = A^{L} - Y
-$$
-
-### Hidden Layers
-
-$$
-\delta^{l} = (W^{l+1})^{\top} \delta^{l+1} \odot f'(Z^{l})
-$$
-
-Where $\odot$ denotes element-wise multiplication and $f'(Z^{l})$ is the activation derivative.
-
----
-
-Numeric backprop example (continuation using `delta2` from section 3):
-
-We use the worked example values:
-
-```text
-X  = [[1, 2, 3],
-      [4, 5, 6]]          # shape (2,3)
-
-Z (pre-activation) = [[2.21, 2.82],
-                      [4.91, 6.42]]  # shape (2,2)
-
-A (sigmoid) = [[0.900, 0.944],
-              [0.993, 0.998]]      # shape (2,2)
-
-sigmoid_deriv = [[0.0900, 0.0529],
-                [0.00695, 0.001996]]
-```
-
-From section 3, we already have:
-
-```text
-delta2 = [[-0.5781,  0.3435, 0.2346],
-             [ 0.4293, -0.6582, 0.2289]]   # shape (2,3)
-
-W2 = [[ 0.20, -0.10,  0.05],
-        [ 0.30,  0.40, -0.20]]           # shape (2,3)
-```
-
-1) Propagate to hidden pre-activation space:
-
-```text
-delta_next = delta2 @ W2.T
-             ≈ [[-0.13824, -0.08295],
-                 [ 0.16313, -0.18027]]     # shape (2,2)
-```
-
-2) Hidden-layer delta (element-wise with sigmoid derivative):
-
-```text
-delta_hidden = delta_next * sigmoid_deriv
-                ≈ [[-0.01244, -0.00439],
-                    [ 0.00113, -0.00036]]  # shape (2,2)
-```
-
-3) Weight gradients for W1 (W1 shape = (3,2)):
-
-```text
-dW = X^T @ delta_hidden
-    ≈ [[-0.00791, -0.00582],
-        [-0.01921, -0.01057],
-        [-0.03052, -0.01532]]             # shape (3,2)
-```
-
-4) Bias gradients (sum over batch):
-
-```text
-db = sum(delta_hidden, axis=0, keepdims=True)
-    ≈ [[-0.01131, -0.00475]]          # shape (1,2)
-```
-
-If your loss is averaged over the batch, divide gradients by batch size (2):
-
-```text
-dW_mean = dW / 2 ≈ [[-0.00395, -0.00291],
-                          [-0.00961, -0.00529],
-                          [-0.01526, -0.00766]]
-
-db_mean = db / 2 ≈ [[-0.00565, -0.00237]]
-```
-
-5) Parameter update (gradient descent, learning rate $\eta$):
-
-```text
-W1_new = W1 - eta * dW_mean
-b1_new = b1 - eta * db_mean
-```
-
-This shows a full local backprop step in one chain: `delta2` (section 3) → `delta_next` → `delta_hidden` → gradients `dW1` and `db1`.
-
-## 5. Gradient Computation
-
-Given shapes:
-
-```text
-A1 = (8,5)
-delta2 = (8,3)
-W2 = (5,3)
-```
-
-### Weight Gradient
-
-$$
-\frac{\partial L}{\partial W^{2}} = (A^{1})^{\top} \delta^{2}
-$$
-
-Implementation:
-
-```python
-dW2 = A1.T @ delta2
-```
-
-Shape check:
-
-```text
-(5,8) @ (8,3) = (5,3)
-```
-
-Matches $W^2$ shape.
-
----
-
-### Bias Gradient
-
-$$
-\frac{\partial L}{\partial b^{2}} = \sum_{i=1}^{\text{batch}} \delta^{2}_i
-$$
-
-Implementation:
-
-```python
-db2 = np.sum(delta2, axis=0, keepdims=True)
-```
-
----
-
-### Linked numeric example (continuation from section 3 output gradient)
-
-Use the same `A1` and `delta2` values already computed in section 3.
-
-Numeric values (same chain):
-
-```text
-A1 = [[0.900, 0.944],
-    [0.993, 0.998]]    # shape (2,2)
-
-delta2 = [[-0.5781,  0.3435, 0.2346],
-      [ 0.4293, -0.6582, 0.2289]]  # shape (2,3)
-```
-
-Weight gradient (matrix multiply):
-
-```text
-dW2 = A1.T @ delta2
-
-# compute entries:
-# row 0: [0.900*(-0.5781) + 0.993*(0.4293),
-#         0.900*(0.3435)  + 0.993*(-0.6582),
-#         0.900*(0.2346)  + 0.993*(0.2289)]
-#       = [-0.0940, -0.3444, 0.4384]
-# row 1: [0.944*(-0.5781) + 0.998*(0.4293),
-#         0.944*(0.3435)  + 0.998*(-0.6582),
-#         0.944*(0.2346)  + 0.998*(0.2289)]
-#       = [-0.1173, -0.3326, 0.4499]
-
-dW2 ≈ [[-0.0940, -0.3444, 0.4384],
-      [-0.1173, -0.3326, 0.4499]]   # shape (2,3)
-```
-
-Bias gradient (sum over batch):
-
-```text
-db2 = sum_rows(delta2) ≈ [-0.1488, -0.3147, 0.4635]  # shape (1,3)
-```
-
-If you average over the batch (batch size = 2):
-
-```text
-dW2_mean = dW2 / 2  # element-wise division
-db2_mean = db2 / 2
-```
-
-
-This demonstrates the same formulas (`dW = A^T @ delta`, `db = sum(delta)`) on the exact `delta2` produced in section 3 (no disconnected toy values).
-
-
-## 6. Parameter Update (Gradient Descent)
-
-$$
-W = W - \eta \frac{\partial L}{\partial W}
-$$
-
-$$
-b = b - \eta \frac{\partial L}{\partial b}
-$$
-
-Where $\eta$ is the learning rate.
-
----
-
-### Numeric parameter-update example (same chain, sections 3–5)
-
-Using the same `W2` from section 3 and `dW2_mean`/`db2_mean` from section 5, apply gradient descent.
-
-Values from above:
-
-```text
-W2 = [[ 0.20, -0.10,  0.05],
-    [ 0.30,  0.40, -0.20]]          # shape (2,3)
-
-dW2_mean = dW2 / 2 ≈ [[-0.0470, -0.1722, 0.2192],
-                [-0.0586, -0.1663, 0.2250]]  # shape (2,3)
-
-db2_mean = db2 / 2 ≈ [[-0.0744, -0.1574, 0.2318]]  # shape (1,3)
-```
-
-Choose learning rate $\eta = 0.1$. Parameter update (element-wise):
-
-```text
-W2_new = W2 - eta * dW2_mean
-    ≈ [[ 0.2047, -0.0828,  0.0281],
-       [ 0.3059,  0.4166, -0.2225]]
-
-b2_new = b2 - eta * db2_mean
-    ≈ [[0.0174, -0.0043, 0.0068]]
-```
-
-NumPy sketch (re-usable):
-
-```python
-# given: W2, b2, dW2_mean, db2_mean, eta
-W2_new = W2 - eta * dW2_mean
-b2_new = b2 - eta * db2_mean
-```
-
-For completeness in this same iteration, you would also update `W1`/`b1` using `dW_mean`/`db_mean` from section 4.
-
-## 7. Dimension Consistency Rule
-
-All matrix operations must satisfy:
-
-$$
-(\text{batch},\,\text{input}) \cdot (\text{input},\,\text{output}) = (\text{batch},\,\text{output})
-$$
-
-Maintaining dimensional consistency is critical to avoid silent logical errors.
-
-### Dimension examples (continuation)
-
-Use the worked-example matrix sizes to illustrate common multiplications:
-
-```text
-# forward: X (2,3) @ W1 (3,2) = Z1 (2,2)
-X  = (2,3)
-W1 = (3,2)
-X @ W1 -> (2,2)
-
-# next-layer: A1 (2,2) @ W2 (2,3) = Z2 (2,3)
-A1 = (2,2)
-W2 = (2,3)
-A1 @ W2 -> (2,3)
-
-# gradient: X.T (3,2) @ delta_hidden (2,2) = dW1 (3,2)
-X.T -> (3,2)
-delta_hidden -> (2,2)
-X.T @ delta_hidden -> (3,2)
-```
-
-Concrete numeric check (from worked example sizes):
-
-```text
-X = [[1,2,3],[4,5,6]]   # (2,3)
-W1 = [[0.1,0.2],[0.3,0.4],[0.5,0.6]]  # (3,2)
-
-# forward: (2,3) @ (3,2) -> (2,2) (we computed Z = [[2.21,2.82],[4.91,6.42]])
-
-# gradient: X.T (3,2) @ delta_hidden (2,2) -> (3,2) (we computed dW ≈ [[0.01039,0.01066],...])
-```
-
-Keeping these arithmetic checks in mind prevents shape mismatches and helps debug silent broadcasting errors.
-
-
----
-
-## 8. Project-Specific Math Addendum (`model/train.py`)
-
-Bu bölüm, mevcut kodda aktif kullanılan matematikleri toplar. Sigmoid bölümleri korunmuş, bu kısım sadece **ek** olarak yazılmıştır.
-
-### 8.1 ReLU and ReLU Derivative
-
-Hidden layers use ReLU:
-
-$$
-	ext{ReLU}(z)=\max(0,z)
-$$
-
-Derivative used in backprop:
-
-$$
-	ext{ReLU}'(z)=
-\begin{cases}
-1, & z>0 \\
-0, & z\le 0
-\end{cases}
-$$
-
-Mini example:
-
-```text
-z      = [-2.0, -0.3, 0.0, 1.2, 3.1]
-ReLU   = [ 0.0,  0.0, 0.0, 1.2, 3.1]
-ReLU'  = [ 0,    0,   0,   1,   1  ]
-```
-
-### 8.2 Stable Softmax Used in Code
-
-Softmax per sample:
+### Step 4 — Softmax (olasılığa dönüşüm)
 
 $$
 \hat{y}_i = \frac{e^{z_i}}{\sum_j e^{z_j}}
 $$
 
-Numerically stable version (used in code):
+Uygulamada softmax her bir örnek (satır) için ayrı ayrı uygulanır — yani satır bazında
+normalize edilir. Sayısal kararlılık için her satırdan o satırın maksimumu
+çıkarılır (böylece büyük pozitif/negatif değerlere karşı exp() taşması engellenir):
 
 $$
-\hat{y}_i = \frac{e^{z_i - z_{max}}}{\sum_j e^{z_j - z_{max}}}
+\hat{y}_i = \frac{e^{z_i - z_{\max}}}{\sum_j e^{z_j - z_{\max}}}
 $$
 
-Mini example:
+Adım adım (bizim örneğe göre):
+    $$Z^2 =
+    \begin{bmatrix}
+    0.142 & 0.071 \\
+    0.640 & -0.480
+    \end{bmatrix}$$
 
-```text
-z = [5.0, 2.0, -1.0]
-z_max = 5.0
-z_shift = [0.0, -3.0, -6.0]
-exp(z_shift) ≈ [1.0000, 0.0498, 0.0025]
-sum ≈ 1.0523
-softmax ≈ [0.9503, 0.0473, 0.0024]
-```
+- 1. örnek: $Z^{2}_{(1)} = [0.142,\;0.071]$.
+      - $z_{\max}=0.142 \Rightarrow [0,\;-0.071]$,
+      - $e^{[0,-0.071]} \approx [1.0000,\;0.9314]$,
+      - toplam $=1.9314$,
+      - softmax $= [1/1.9314,\;0.9314/1.9314] \approx [0.5177,\;0.4823]$.
 
-### 8.3 Categorical Cross-Entropy (Batch Mean)
+- 2. örnek: $Z^{2}_{(2)} = [0.640,\;-0.480]$.
+      - $z_{\max}=0.640 \Rightarrow [0,\;-1.120]$,
+      - $e^{[0,-1.120]} \approx [1.0000,\;0.3250]$,
+      - toplam $=1.3250$,
+      - softmax $= [1/1.3250,\;0.3250/1.3250] \approx [0.7541,\;0.2459]$.
 
-The training loss in `compute_loss()`:
+
+Sonuç:
+
+$$
+\hat{Y} =
+\begin{bmatrix}
+0.5177 & 0.4823 \\
+0.7541 & 0.2459
+\end{bmatrix}
+$$
+
+---
+
+
+## 4) Cross-Entropy Loss
+
+Formül (mini-batch için ortalama):
 
 $$
 L = -\frac{1}{m}\sum_{k=1}^{m}\sum_{c=1}^{C} y_{k,c}\log(\hat{y}_{k,c})
 $$
 
-with clipping:
-
+Bu, bir önceki softmax çıktısının modelin ne kadar yanıldığını ölçmek için kullanılır.
+Doğru sınıfın olasılığı ne kadar düşükse, ceza (loss) o kadar büyük olur.
+Eğitim sırasında bu loss minimize edilerek modelin doğruluğu artırılır.
 $$
-\hat{y}_{k,c} \leftarrow \text{clip}(\hat{y}_{k,c}, \epsilon, 1-\epsilon)
-$$
-
-to avoid $\log(0)$.
-
-### 8.4 Softmax + Cross-Entropy Gradient Simplification
-
-For output layer logits:
-
-$$
-\delta^L = \hat{Y} - Y
-$$
-
-This is exactly implemented as:
-
-```python
-eh[-1] = activations[-1] - y
-```
-
-### 8.5 Hidden-Layer Error Propagation in This Project
-
-For hidden layer $l$:
-
-$$
-\delta^l = (\delta^{l+1}(W^{l+1})^T)\odot \text{ReLU}'(Z^l)
+\hat{Y}=
+\begin{bmatrix}
+0.5177 & 0.4823 \\
+0.7541 & 0.2459
+\end{bmatrix},
+\qquad
+Y=
+\begin{bmatrix}
+1 & 0 \\
+0 & 1
+\end{bmatrix}
 $$
 
-matching code:
+Adım adım (aynı örneğin devamı):
 
-```python
-eh[i] = (eh[i + 1] @ W[i + 1].T) * derivative_relu(z_scores[i])
-```
+1) Örnek başına loss:
 
-### 8.6 Mini-Batch Gradients and Update Rule
+$$
+L_k=-\sum_{c=1}^{C}y_{k,c}\log(\hat{y}_{k,c})
+$$
 
-For each layer:
+- 1. örnek için $Y_1=[1,0]$:
+
+$$
+L_1=-(1\cdot\log(0.5177)+0\cdot\log(0.4823))=-\log(0.5177)=0.6584
+$$
+
+- 2. örnek için $Y_2=[0,1]$:
+
+$$
+L_2=-(0\cdot\log(0.7541)+1\cdot\log(0.2459))=-\log(0.2459)=1.4029
+$$
+
+2) Mini-batch ortalaması ($m=2$):
+
+$$
+L=\frac{L_1+L_2}{2}=\frac{0.6584+1.4029}{2}=1.0307
+$$
+
+Yani bu batch için modelin ortalama hatası **1.0307**'dir.
+
+Not: softmax + cross-entropy birlikte kullanıldığında (ve doğru one-hot
+formatında verildiğinde) çıktı delta'sı sadeleşir ve geri yayılımda pratik olarak
+$$\delta = \hat{Y} - Y$$
+kullanılır
+
+
+
+---
+
+## 5) Backpropagation
+
+### Step 1 — Output delta
+
+Amaç: Çıkış katmanındaki hatayı (tahmin - gerçek) bulup geriye taşımak.
+Softmax + Cross-Entropy birlikte kullanıldığında türev sadeleşir:
+
+$$
+\delta^2 = \hat{Y} - Y
+$$
+
+Burada:
+
+$$
+\hat{Y}=
+\begin{bmatrix}
+0.5177 & 0.4823 \\
+0.7541 & 0.2459
+\end{bmatrix},
+\qquad
+Y=
+\begin{bmatrix}
+1 & 0 \\
+0 & 1
+\end{bmatrix}
+$$
+
+Satır satır çıkarma:
+
+- 1. örnek: $[0.5177,\;0.4823]-[1,\;0]=[-0.4823,\;0.4823]$
+- 2. örnek: $[0.7541,\;0.2459]-[0,\;1]=[0.7541,\;-0.7541]$
+
+$$
+\delta^2 =
+\begin{bmatrix}
+-0.4823 & 0.4823 \\
+0.7541 & -0.7541
+\end{bmatrix}
+$$
+
+
+### Step 2 — Hidden delta
+
+Amaç: Çıkıştaki hatanın hidden katmana ne kadar yansıdığını bulmak.
+
+Formül:
+$$
+\delta^1 = (\delta^2 (W^2)^T) \odot \mathrm{ReLU}'(Z^1)
+$$
+
+$ \delta^2$'miz
+$$
+\delta^2 =
+\begin{bmatrix}
+-0.4823 & 0.4823 \\
+0.7541 & -0.7541
+\end{bmatrix}
+$$
+
+
+$W^2$:
+
+$$
+W^2 =
+\begin{bmatrix}
+0.40 & -0.30 \\
+0.20 & 0.10
+\end{bmatrix}
+$$
+
+Transpoz sonrası $W^2$:
+
+$$
+(W^2)^T =
+\begin{bmatrix}
+0.40 & 0.20 \\
+-0.30 & 0.10
+\end{bmatrix}
+$$
+
+Peki neden transpose alıyoruz?
+
+- İleri yayılımda: $Z^2 = A^1W^2 + b^2$
+- Geri yayılımda hata hidden'a dönerken: $\delta^2$ ile $W^2$'nin ters yönlü etkisi gerekir, bu yüzden $(W^2)^T$ kullanılır.
+
+Ara çarpımın açık hesabı:
+
+- 1. örnek, 1. hidden nöron:
+
+$$
+(-0.4823)\cdot0.40 + (0.4823)\cdot(-0.30) = -0.3376
+$$
+
+- 1. örnek, 2. hidden nöron:
+
+$$
+(-0.4823)\cdot0.20 + (0.4823)\cdot0.10 = -0.0482
+$$
+
+- 2. örnek, 1. hidden nöron:
+
+$$
+(0.7541)\cdot0.40 + (-0.7541)\cdot(-0.30) = 0.5279
+$$
+
+- 2. örnek, 2. hidden nöron:
+
+$$
+(0.7541)\cdot0.20 + (-0.7541)\cdot0.10 = 0.0754
+$$
+
+$$
+\delta^2 (W^2)^T =
+\begin{bmatrix}
+-0.3376 & -0.0482 \\
+0.5279 & 0.0754
+\end{bmatrix}
+$$
+
+ReLU türevi maskesi ($Z^1$ üzerinden):
+
+$$
+\mathrm{ReLU}'(Z^1)=
+\begin{bmatrix}
+0 & 1 \\
+1 & 0
+\end{bmatrix}
+$$
+
+Bu maskenin anlamı:
+
+- $Z^1 > 0$ olan yerde türev 1, yani hata geçer.
+- $Z^1 \le 0$ olan yerde türev 0, yani hata kesilir.
+
+Hadamard çarpımı(eleman eleman çarpım):
+
+$$
+\delta^1 =
+\begin{bmatrix}
+0.0000 & -0.0482 \\
+0.5279 & 0.0000
+\end{bmatrix}
+$$
+
+Kısa yorum:
+
+- 1. örnekte 1. hidden nöronun $Z^1$ değeri negatif olduğu için gradyan 0'a kesildi.
+- 2. örnekte 2. hidden nöronun $Z^1$ değeri negatif olduğu için gradyan 0'a kesildi.
+- Bu davranış ReLU'nun geri yayılımdaki temel etkisidir.
+
+---
+
+## 6) Gradient Hesabı
+
+Genel formüller:
 
 $$
 \nabla W^l = \frac{(A^{l-1})^T\delta^l}{m_b},
 \qquad
-\nabla b^l = \frac{\sum\delta^l}{m_b}
+\nabla b^l = \frac{\sum \delta^l}{m_b}
 $$
 
-Update:
+### Output layer gradient
+
+Amaç:
+- Backpropagation’da $\delta$ ile hatayı bulduk.
+- Ama bu hata tek başına yetmez; ağırlıkların ve biasların nasıl güncelleneceğini bilmemiz lazım.
+- Bunun için loss fonksiyonunun ağırlıklara ve biaslara göre türevini (gradyanını) hesaplıyoruz.
+- Gradyan bize “hangi yönde ve ne kadar güncelleme yapmalıyız” bilgisini verir.
+
+Kullandığımız değerler:
 
 $$
-W^l \leftarrow W^l - \eta\nabla W^l,
+A^1=
+\begin{bmatrix}
+0.00 & 0.71 \\
+1.60 & 0.00
+\end{bmatrix},
+$$
+
+$$
+\delta^2=
+\begin{bmatrix}
+-0.4823 & 0.4823 \\
+0.7541 & -0.7541
+\end{bmatrix}
+$$
+
+Önce transpoz:
+
+$$
+(A^1)^T=
+\begin{bmatrix}
+0.00 & 1.60 \\
+0.71 & 0.00
+\end{bmatrix}
+$$
+
+Çarpım:
+
+$$
+(A^1)^T\delta^2=
+\begin{bmatrix}
+1.2066 & -1.2066 \\
+-0.3424 & 0.3424
+\end{bmatrix}
+$$
+
+Eleman bazında örnek:
+
+- $(1,1)$ elemanı: $0.00\cdot(-0.4823) + 1.60\cdot0.7541 = 1.2066$
+- $(2,1)$ elemanı: $0.71\cdot(-0.4823) + 0.00\cdot0.7541 = -0.3424$
+
+Weight gradyanı için aktivasyon katmanının transpozunu alırız, delta ile çarparız, sonra batch size’e böleriz.
+
+$$ dW^2 = \frac{(A^1)^T\delta^2}{2} = 
+\begin{bmatrix}
+0.6033 & -0.6033 \\
+-0.1712 & 0.1712
+\end{bmatrix}
+$$
+
+Bias gradyanı için $\delta$ değerlerini toplayıp batch'e böleriz:
+
+$$
+\sum \delta^2 =
+\begin{bmatrix}
+(-0.4823+0.7541) & (0.4823-0.7541)
+\end{bmatrix} =
+\begin{bmatrix}
+0.2718 & -0.2718
+\end{bmatrix}
+$$
+
+$$
+db^2 = \frac{\sum \delta^2}{2}
+= \begin{bmatrix}0.1359 & -0.1359\end{bmatrix}
+$$
+
+
+### Hidden layer gradient
+
+Amaç: İlk katman ($W^1,b^1$) için gradyanları bulmak.
+
+Kullandığımız değerler:
+
+$$
+X=
+\begin{bmatrix}
+0.50 & 1.20 & -0.30 \\
+1.00 & -0.40 & 0.80
+\end{bmatrix},
 \qquad
-b^l \leftarrow b^l - \eta\nabla b^l
+\delta^1=
+\begin{bmatrix}
+0.0000 & -0.0482 \\
+0.5279 & 0.0000
+\end{bmatrix}
 $$
 
-where $m_b$ is batch size and $\eta$ is learning rate.
-
-### 8.7 He Uniform Initialization (Used)
-
-For each layer with `fan_in`:
+Önce transpoz:
 
 $$
-W \sim U\left(-\sqrt{\frac{6}{fan_{in}}}, +\sqrt{\frac{6}{fan_{in}}}\right),
-\qquad b=0
+X^T=
+\begin{bmatrix}
+0.50 & 1.00 \\
+1.20 & -0.40 \\
+-0.30 & 0.80
+\end{bmatrix}
 $$
 
-This matches ReLU-based hidden layers and stabilizes initial signal flow.
+Çarpım:
 
+$$
+X^T\delta^1=
+\begin{bmatrix}
+0.5279 & -0.0241 \\
+-0.2112 & -0.0578 \\
+0.4223 & 0.0145
+\end{bmatrix}
+$$
+
+Eleman bazında örnek:
+
+- $(1,1)$ elemanı: $0.50\cdot0.0000 + 1.00\cdot0.5279 = 0.5279$
+- $(1,2)$ elemanı: $0.50\cdot (-0.0482)+1.00\cdot 0.0000=-0.0241$
+- ...
+- $(3,1)$ elemanı: $(-0.30)\cdot 0.0000+0.80\cdot 0.5279=0.4223$
+- $(3,2)$ elemanı: $(-0.30)\cdot(-0.0482) + 0.80\cdot0.0000 = 0.0145$
+
+$$
+dW^1 = \frac{X^T\delta^1}{2}=
+\begin{bmatrix}
+0.2639 & -0.0120 \\
+-0.1056 & -0.0289 \\
+0.2112 & 0.0072
+\end{bmatrix}
+$$
+
+Bias gradyanı:
+
+$$
+\sum \delta^1 =
+\begin{bmatrix}
+(0.0000+0.5279) & (-0.0482+0.0000)
+\end{bmatrix}=
+\begin{bmatrix}
+0.5279 & -0.0482
+\end{bmatrix}
+$$
+
+$$
+db^1 = \frac{\sum \delta^1}{2}
+= \begin{bmatrix}0.2639 & -0.0241\end{bmatrix}
+$$
+
+---
+
+## 7) Parametre Güncelleme (Gradient Descent)
+Son adımda, bir önceki bölümde bulduğumuz gradyanları kullanarak
+ağırlık ve bias değerlerini güncelliyoruz.
+
+Basit fikir:
+
+- Gradyan pozitifse: o parametreyi biraz azaltırız.
+- Gradyan negatifse: o parametreyi biraz artırırız.
+- Ne kadar değişeceğini learning rate belirler.
+
+Genel formül:
+
+$$
+W^l \leftarrow W^l - \eta\,dW^l,
+\qquad
+b^l \leftarrow b^l - \eta\,db^l
+$$
+
+Bu örnekte (öğrenme oranı):
+
+$$
+\eta = 0.05
+$$
+
+### 7.1) Output layer güncellemesi ($W^2, b^2$)
+
+Eski değerler:
+
+$$
+W^2=
+\begin{bmatrix}
+0.40 & -0.30 \\
+0.20 & 0.10
+\end{bmatrix},
+\qquad
+b^2=\begin{bmatrix}0 & 0\end{bmatrix}
+$$
+
+Gradyanlar:
+
+$$
+dW^2=
+\begin{bmatrix}
+0.6033 & -0.6033 \\
+-0.1712 & 0.1712
+\end{bmatrix},
+\qquad
+db^2=\begin{bmatrix}0.1359 & -0.1359\end{bmatrix}
+$$
+
+Eleman bazında güncelleme:
+
+- $w^2_{11,new} = 0.40 - 0.05\cdot0.6033 = 0.3698$
+- $w^2_{12,new} = -0.30 - 0.05\cdot(-0.6033) = -0.2698$
+- $w^2_{21,new} = 0.20 - 0.05\cdot(-0.1712) = 0.2086$
+- $w^2_{22,new} = 0.10 - 0.05\cdot0.1712 = 0.0914$
+
+- $b^2_{1,new} = 0 - 0.05\cdot0.1359 = -0.0068$
+- $b^2_{2,new} = 0 - 0.05\cdot(-0.1359) = 0.0068$
+
+Sonuç:
+
+$$
+W^2_{new} =
+\begin{bmatrix}
+0.3698 & -0.2698 \\
+0.2086 & 0.0914
+\end{bmatrix},
+\quad
+b^2_{new} = \begin{bmatrix}-0.0068 & 0.0068\end{bmatrix}
+$$
+
+### 7.2) Hidden layer güncellemesi ($W^1, b^1$)
+
+Eski değerler:
+
+$$
+W^1=
+\begin{bmatrix}
+0.60 & -0.20 \\
+-0.10 & 0.50 \\
+1.20 & -0.70
+\end{bmatrix},
+\qquad
+b^1=\begin{bmatrix}0 & 0\end{bmatrix}
+$$
+
+Gradyanlar:
+
+$$
+dW^1=
+\begin{bmatrix}
+0.2639 & -0.0120 \\
+-0.1056 & -0.0289 \\
+0.2112 & 0.0072
+\end{bmatrix},
+\qquad
+db^1=\begin{bmatrix}0.2639 & -0.0241\end{bmatrix}
+$$
+
+Eleman bazında örnek güncelleme:
+
+- $w^1_{11,new} = 0.60 - 0.05\cdot0.2639 = 0.5868$
+- $w^1_{12,new} = -0.20 - 0.05\cdot(-0.0120) = -0.1994$
+- $w^1_{31,new} = 1.20 - 0.05\cdot0.2112 = 1.1894$
+- $w^1_{32,new} = -0.70 - 0.05\cdot0.0072 = -0.7004$
+
+- $b^1_{1,new} = 0 - 0.05\cdot0.2639 = -0.0132$
+- $b^1_{2,new} = 0 - 0.05\cdot(-0.0241) = 0.0012$
+
+Sonuç:
+
+$$
+W^1_{new} =
+\begin{bmatrix}
+0.5868 & -0.1994 \\
+-0.0947 & 0.5014 \\
+1.1894 & -0.7004
+\end{bmatrix},
+\quad
+b^1_{new} = \begin{bmatrix}-0.0132 & 0.0012\end{bmatrix}
+$$
+
+Kısa özet:
+
+- Adım 5-6'da gradyanlar bulundu.
+- Adım 7'de bu gradyanlar ile parametreler güncellendi.
+- Sonraki mini-batch'te model bu yeni parametrelerle ileri yayılım yapar.
+
+---
 
