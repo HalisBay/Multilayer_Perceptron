@@ -5,3 +5,4 @@ numpy
 sklearn
 seaborn
 matplotlib
+ptitprince

@@ -128,6 +128,16 @@ Final subset used after analysis:
 - `symmetry3`
 - `fractal_dimension3`
 
+These figures illustrates the relationship between each selected feature and the target (`diagnosis`): for each feature, the rain‑cloud plot shows the distribution for benign vs malignant cases so you can quickly assess how well the feature separates the two classes.
+
+![](plots/images/t3_d.png)
+![](plots/images/p3_d.png)
+![](plots/images/s3_d.png)
+![](plots/images/cp3_d.png)
+![](plots/images/sm3_d.png)
+![](plots/images/fd3_d.png)
+
+
 ---
 
 ## Run Training
