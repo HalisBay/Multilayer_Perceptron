@@ -233,7 +233,7 @@ $$
 
 
 **Aktivasyon Sonrası Geçişin Mantığı:**
-İlk katmanda giriş verileri X ağırlıklarla $ W^1 $ çarpılıp bias $b^1$ eklenerek $Z^1$ elde edilir. Bu hâl hâlâ doğrusal bir dönüşümdür. Aktivasyon fonksiyonu (örneğin ReLU) uygulanarak $A^1$ üretilir; bu adım modele doğrusal olmayanlık katar ve verilerin daha karmaşık ilişkilerini öğrenmesini sağlar.
+İlk katmanda giriş verileri X ağırlıklarla $W^1$ çarpılıp bias $b^1$ eklenerek $Z^1$ elde edilir. Bu hâl hâlâ doğrusal bir dönüşümdür. Aktivasyon fonksiyonu (örneğin ReLU) uygulanarak $A^1$ üretilir; bu adım modele doğrusal olmayanlık katar ve verilerin daha karmaşık ilişkilerini öğrenmesini sağlar.
 Sonraki adımda $A^1$, bir sonraki katmanın girişidir. Bu yüzden $A^1$ tekrar yeni ağırlıklarla $W^2$ çarpılır ve bias $b^2$ eklenir. Böylece her katman kendi ağırlıklarını öğrenir ve veriyi farklı bir temsil düzeyine dönüştürür. Katmanlar arası bu zincir sayesinde ağ, basit özelliklerden başlayarak daha soyut ve güçlü karar sınırlarına ulaşır.
 
 
@@ -285,11 +285,14 @@ $$
 $$
 
 Adım adım (bizim örneğe göre):
-    $$Z^2 =
-    \begin{bmatrix}
-    0.142 & 0.071 \\
-    0.640 & -0.480
-    \end{bmatrix}$$
+
+$$
+Z^2 =
+\begin{bmatrix}
+0.142 & 0.071 \\
+0.640 & -0.480
+\end{bmatrix}
+$$
 
 - 1. örnek: $Z^{2}_{(1)} = [0.142,\;0.071]$.
       - $z_{\max}=0.142 \Rightarrow [0,\;-0.071]$,
@@ -328,6 +331,7 @@ $$
 Bu, bir önceki softmax çıktısının modelin ne kadar yanıldığını ölçmek için kullanılır.
 Doğru sınıfın olasılığı ne kadar düşükse, ceza (loss) o kadar büyük olur.
 Eğitim sırasında bu loss minimize edilerek modelin doğruluğu artırılır.
+
 $$
 \hat{Y}=
 \begin{bmatrix}
@@ -425,11 +429,13 @@ $$
 Amaç: Çıkıştaki hatanın hidden katmana ne kadar yansıdığını bulmak.
 
 Formül:
+
 $$
 \delta^1 = (\delta^2 (W^2)^T) \odot \mathrm{ReLU}'(Z^1)
 $$
 
-$ \delta^2$'miz
+$\delta^2$'miz$
+
 $$
 \delta^2 =
 \begin{bmatrix}
