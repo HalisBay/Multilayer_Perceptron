@@ -2,7 +2,6 @@ ucimlrepo
 pandas
 scikit-learn
 numpy
-sklearn
 seaborn
 matplotlib
 ptitprince

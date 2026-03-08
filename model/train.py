@@ -2,7 +2,7 @@ import argparse
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
+import os
 
 def relu(Z):
     return np.maximum(0, Z)
@@ -207,8 +207,11 @@ if __name__ == "__main__":
     patience = args.patience
     min_delta = args.min_delta
 
-    data = pd.read_csv("data/split/train_scaled.csv")
-    valid_data = pd.read_csv("data/split/valid_scaled.csv")
+    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    data_path = base_path + "/data/split/"
+    data = pd.read_csv(data_path + "train_scaled.csv")
+    valid_data = pd.read_csv(data_path + "valid_scaled.csv")
 
     X = data.drop("diagnosis", axis=1).values
     X_valid = valid_data.drop("diagnosis", axis=1).values

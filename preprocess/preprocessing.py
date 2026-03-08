@@ -1,15 +1,18 @@
 import pandas as pd
 import json
 from sklearn.preprocessing import StandardScaler
+import os
+
+base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def save_scaler_params(scaler, features):
     data = {
         "features": list(features),
-        "mean": scaler.mean_.tolist(),
-        "scale": scaler.scale_.tolist(),
+        "mu": scaler.mean_.tolist(),
+        "sigma": scaler.scale_.tolist(),
     }
-    with open("data/split/scaler_params.txt", "w", encoding="utf-8") as f:
+    with open(base_path + "/data/split/scaler_params.txt", "w", encoding="utf-8") as f:
         json.dump(data, f)
 
 
@@ -23,9 +26,9 @@ def run_preprocessing():
         "symmetry3",
         "fractal_dimension3",
     ]
-
-    train_path = pd.read_csv("data/split/train.csv")
-    valid_path = pd.read_csv("data/split/valid.csv")
+    split_path = base_path + "/data/split/"
+    train_path = pd.read_csv(split_path + "train.csv")
+    valid_path = pd.read_csv(split_path + "valid.csv")
 
     X_train = train_path[selected_features]
     y_train = train_path["diagnosis"]
@@ -42,8 +45,8 @@ def run_preprocessing():
 
     train_scaled = pd.concat([X_train_scaled_df, y_train], axis=1)
     valid_scaled = pd.concat([X_valid_scaled_df, y_valid], axis=1)
-    train_scaled.to_csv("data/split/train_scaled.csv", index=False)
-    valid_scaled.to_csv("data/split/valid_scaled.csv", index=False)
+    train_scaled.to_csv(split_path + "train_scaled.csv", index=False)
+    valid_scaled.to_csv(split_path + "valid_scaled.csv", index=False)
 
     save_scaler_params(scaler, selected_features)
 

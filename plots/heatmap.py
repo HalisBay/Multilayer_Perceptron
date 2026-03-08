@@ -4,9 +4,9 @@ import seaborn as sns
 import numpy as np
 import os
 
-base = os.path.dirname(__file__)
+base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-data_path = os.path.join(base, "..", "data", "split", "train.csv")
+data_path = base_path + "/data/split/train.csv"
 data = pd.read_csv(data_path)
 
 

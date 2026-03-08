@@ -1,8 +1,12 @@
 import ptitprince as pt
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
-df = pd.read_csv("data/split/train.csv")
+base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+data_path = base_path + "/data/split/train.csv"
+df = pd.read_csv(data_path)
 
 selected_features = [
     "texture3",
