@@ -4,6 +4,7 @@ import json
 from train import forward_propagation
 import os
 
+
 def get_scaled_params(path):
     with open(path, "r") as txt:
         params = json.load(txt)
@@ -41,4 +42,6 @@ if __name__ == "__main__":
 
     yhat = np.argmax(probs, axis=1)
     y = data["diagnosis"].values
+    result = pd.DataFrame({"yhat": yhat, "y": y})
+    print(result)
     print(f"% {np.mean(y == yhat) * 100:.2f}")

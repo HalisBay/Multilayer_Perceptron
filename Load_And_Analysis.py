@@ -3,11 +3,16 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 import os
 import numpy as np
+
 base_path = os.path.dirname(os.path.abspath(__file__))
 
 
 class DataPipeline:
-    def __init__(self, raw_path= base_path + "/data/raw/wdbc.csv", split_data_path= base_path + "/data/split"):
+    def __init__(
+        self,
+        raw_path=base_path + "/data/raw/wdbc.csv",
+        split_data_path=base_path + "/data/split",
+    ):
         self.raw_path = raw_path
         self.split_data_path = split_data_path
         self.train_path = os.path.join(split_data_path, "train.csv")

@@ -216,22 +216,14 @@ if __name__ == "__main__":
     X = data.drop("diagnosis", axis=1).values
     X_valid = valid_data.drop("diagnosis", axis=1).values
 
-    y_raw = data["diagnosis"].values
-    y_valid_raw = valid_data["diagnosis"].values
+    y_raw = data["diagnosis"].astype(int).values
+    y_valid_raw = valid_data["diagnosis"].astype(int).values
 
     input_size = X.shape[1]
-    classes = np.unique(y_raw)
-    output_size = len(classes)
-    class_to_idx = {label: idx for idx, label in enumerate(classes)}
+    output_size = len(np.unique(y_raw))
 
-    # Categorical softmax+cross-entropy için one hot çevirdim
-    y_int = np.array([class_to_idx[label] for label in y_raw], dtype=np.int64)
-    y = np.eye(output_size)[y_int]
-
-    y_valid_int = np.array(
-        [class_to_idx[label] for label in y_valid_raw], dtype=np.int64
-    )
-    y_valid = np.eye(output_size)[y_valid_int]
+    y = np.eye(output_size)[y_raw]
+    y_valid = np.eye(output_size)[y_valid_raw]
 
     layer_size = [input_size] + layers + [output_size]
 
