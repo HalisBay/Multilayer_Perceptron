@@ -1,8 +1,6 @@
-from ucimlrepo import fetch_ucirepo
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import os
-import numpy as np
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -10,7 +8,7 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 class DataPipeline:
     def __init__(
         self,
-        raw_path=base_path + "/data/raw/wdbc.csv",
+        raw_path=base_path + "/data/raw/data.csv",
         split_data_path=base_path + "/data/split",
     ):
         self.raw_path = raw_path
@@ -18,22 +16,45 @@ class DataPipeline:
         self.train_path = os.path.join(split_data_path, "train.csv")
         self.valid_path = os.path.join(split_data_path, "valid.csv")
 
-    def download_and_split(self):
-        # Veri dosyası yoksa indir ve kaydet
+    def load_and_split(self):
         if not os.path.exists(self.raw_path):
-            os.makedirs(os.path.dirname(self.raw_path), exist_ok=True)
-            dataset = fetch_ucirepo(id=17)
-            df = dataset.data.features.copy()
-            # Target sütununu (diagnosis) sayısal olarak kodla: M=1, B=0
-            labels = dataset.data.targets.replace({"M": 1, "B": 0})
-            df["diagnosis"] = labels
-            df.to_csv(self.raw_path, index=False)
-            print(f"Dataset downloaded and saved to {self.raw_path}")
-        else:
-            pass
+            raise FileNotFoundError(f"File not found: {self.raw_path}")
 
-        # Veriyi yükle x ve y etiketlerine göre ayır
-        df = pd.read_csv(self.raw_path)
+        features = [
+            "radius",
+            "texture",
+            "perimeter",
+            "area",
+            "smoothness",
+            "compactness",
+            "concavity",
+            "concave_points",
+            "symmetry",
+            "fractal_dimension",
+        ]
+        feature_columns = [f"{f}{i}" for i in (1, 2, 3) for f in features]
+        target_columns = feature_columns + ["diagnosis"]
+        data_columns = ["id", "diagnosis"] + feature_columns
+
+        header_df = pd.read_csv(self.raw_path)
+        if list(header_df.columns) == target_columns:
+            df = header_df.copy()
+        else:
+            raw_df = pd.read_csv(self.raw_path, header=None)
+            if raw_df.shape[1] == len(data_columns):
+                raw_df.columns = data_columns
+                raw_df = raw_df.drop(columns=["id"])
+                df = raw_df[target_columns]
+            elif raw_df.shape[1] == len(target_columns):
+                raw_df.columns = target_columns
+                df = raw_df.copy()
+            else:
+                raise ValueError("Unexpected column please check data")
+
+        df["diagnosis"] = df["diagnosis"].replace({"M": 1, "B": 0})
+
+        df.to_csv(self.raw_path, index=False)
+
         X = df.drop(columns=["diagnosis"])
         y = df["diagnosis"]
 
@@ -105,7 +126,7 @@ class DataPipeline:
 
 if __name__ == "__main__":
     pipeline = DataPipeline()
-    pipeline.download_and_split()
+    pipeline.load_and_split()
     pipeline.analyze()
     pipeline.corr_with_target()
     pipeline.corr_with_selected_features()
