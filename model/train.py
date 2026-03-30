@@ -193,12 +193,12 @@ def plot_datas(train_losses, valid_losses, train_accs, valid_accs):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--layer", nargs="+", type=int, default=[24, 24])
-    parser.add_argument("--epochs", type=int, default=84)
-    parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--learning_rate", type=float, default=0.05)
-    parser.add_argument("--patience", type=int, default=20)
-    parser.add_argument("--min_delta", type=float, default=1e-4)
+    parser.add_argument("-l", "--layer", nargs="+", type=int, default=[24, 24])
+    parser.add_argument("-e", "--epochs",type=int, default=84)
+    parser.add_argument("-bs", "--batch_size",type=int, default=32)
+    parser.add_argument("-lr", "--learning_rate",type=float, default=0.05)
+    parser.add_argument("-p", "--patience",type=int, default=20)
+    parser.add_argument("-md", "--min_delta",type=float, default=1e-4)
     args = parser.parse_args()
     layers = args.layer
     epochs = args.epochs

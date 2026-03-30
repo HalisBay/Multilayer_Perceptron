@@ -11,7 +11,7 @@ def rain_cloud(df, features):
     tmp = df.copy()
     tmp["diagnosis"] = tmp["diagnosis"].astype(str)
     for f in features:
-        plt.figure(figsize=(6, 2.8))
+        plt.figure(figsize=(6, 3))
         pt.RainCloud(
             x="diagnosis",
             y=f,
